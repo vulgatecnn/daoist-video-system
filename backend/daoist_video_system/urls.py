@@ -19,11 +19,16 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from . import error_views
+from . import health_check
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include("users.urls")),
     path("api/videos/", include("videos.urls")),
+    # 健康检查端点
+    path("health/", health_check.health_check, name="health_check"),
+    path("ready/", health_check.readiness_check, name="readiness_check"),
+    path("alive/", health_check.liveness_check, name="liveness_check"),
     # 错误报告和监控API
     path("api/monitoring/errors/", error_views.error_statistics, name="error_statistics"),
     path("api/monitoring/performance/", error_views.performance_statistics, name="performance_statistics"),

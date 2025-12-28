@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "sequential-thinking": {
+      "command": "uvx",
+      "args": ["mcp-sequential-thinking@latest"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

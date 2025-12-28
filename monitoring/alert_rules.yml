@@ -1,0 +1,87 @@
+# Prometheus 告警规则
+groups:
+  - name: application_alerts
+    rules:
+      # 应用服务不可用
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "服务 {{ $labels.job }} 不可用"
+          description: "服务 {{ $labels.job }} 在实例 {{ $labels.instance }} 上已经停止运行超过 1 分钟"
+
+      # 高错误率
+      - alert: HighErrorRate
+        expr: rate(django_http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "高错误率检测到"
+          description: "{{ $labels.instance }} 的错误率在过去 5 分钟内超过 10%"
+
+      # 响应时间过长
+      - alert: HighResponseTime
+        expr: django_http_request_duration_seconds{quantile="0.95"} > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "响应时间过长"
+          description: "{{ $labels.instance }} 的 95% 响应时间超过 2 秒"
+
+  - name: infrastructure_alerts
+    rules:
+      # CPU 使用率过高
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU 使用率过高"
+          description: "实例 {{ $labels.instance }} 的 CPU 使用率超过 80%"
+
+      # 内存使用率过高
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "内存使用率过高"
+          description: "实例 {{ $labels.instance }} 的内存使用率超过 85%"
+
+      # 磁盘空间不足
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "磁盘空间不足"
+          description: "实例 {{ $labels.instance }} 的磁盘使用率超过 90%"
+
+  - name: database_alerts
+    rules:
+      # 数据库连接数过多
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "数据库连接数过多"
+          description: "数据库 {{ $labels.datname }} 的连接数超过 80"
+
+      # 数据库查询时间过长
+      - alert: SlowDatabaseQueries
+        expr: pg_stat_activity_max_tx_duration > 300
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "数据库查询时间过长"
+          description: "数据库存在运行超过 5 分钟的查询"

@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # 数据库
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: daoist_video_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # 后端服务
+  backend:
+    build: ./backend
+    environment:
+      - DATABASE_URL=postgres://postgres:${DB_PASSWORD:-postgres}@db:5432/daoist_video_db
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=False
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+    volumes:
+      - media_files:/app/media
+      - ./backend/logs:/app/logs
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 前端服务
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # Celery 工作进程（用于异步任务）
+  celery:
+    build: ./backend
+    command: celery -A daoist_video_system worker -l info
+    environment:
+      - DATABASE_URL=postgres://postgres:${DB_PASSWORD:-postgres}@db:5432/daoist_video_db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - media_files:/app/media
+      - ./backend/logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Celery Beat 调度器
+  celery-beat:
+    build: ./backend
+    command: celery -A daoist_video_system beat -l info
+    environment:
+      - DATABASE_URL=postgres://postgres:${DB_PASSWORD:-postgres}@db:5432/daoist_video_db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend/logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_files:
