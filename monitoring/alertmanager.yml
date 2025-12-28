@@ -1,0 +1,266 @@
+# Alertmanager 配置文件
+
+global:
+  # SMTP 配置
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alerts@your-domain.com'
+  smtp_auth_username: 'alerts@your-domain.com'
+  smtp_auth_password: 'your-email-password'
+  smtp_require_tls: true
+
+# 告警路由配置
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default-receiver'
+  
+  routes:
+    # 严重告警 - 立即通知
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      repeat_interval: 5m
+    
+    # 警告级别告警
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      repeat_interval: 30m
+    
+    # 数据库相关告警
+    - match:
+        service: database
+      receiver: 'database-alerts'
+      group_wait: 15s
+      repeat_interval: 15m
+    
+    # 应用服务告警
+    - match:
+        service: application
+      receiver: 'application-alerts'
+      group_wait: 20s
+      repeat_interval: 20m
+
+# 告警接收器配置
+receivers:
+  # 默认接收器
+  - name: 'default-receiver'
+    email_configs:
+      - to: 'admin@your-domain.com'
+        subject: '[道教视频系统] 告警通知'
+        body: |
+          告警详情:
+          
+          告警名称: {{ .GroupLabels.alertname }}
+          严重程度: {{ .GroupLabels.severity }}
+          服务: {{ .GroupLabels.service }}
+          实例: {{ .GroupLabels.instance }}
+          
+          告警描述:
+          {{ range .Alerts }}
+          - {{ .Annotations.summary }}
+            详情: {{ .Annotations.description }}
+            时间: {{ .StartsAt }}
+          {{ end }}
+          
+          查看详情: http://your-domain.com:9090
+    
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts'
+        title: '道教视频系统告警'
+        text: |
+          *告警名称:* {{ .GroupLabels.alertname }}
+          *严重程度:* {{ .GroupLabels.severity }}
+          *服务:* {{ .GroupLabels.service }}
+          
+          {{ range .Alerts }}
+          *摘要:* {{ .Annotations.summary }}
+          *描述:* {{ .Annotations.description }}
+          *时间:* {{ .StartsAt }}
+          {{ end }}
+
+  # 严重告警接收器
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'admin@your-domain.com,ops@your-domain.com'
+        subject: '[紧急] 道教视频系统严重告警'
+        body: |
+          🚨 严重告警 🚨
+          
+          告警名称: {{ .GroupLabels.alertname }}
+          服务: {{ .GroupLabels.service }}
+          实例: {{ .GroupLabels.instance }}
+          
+          {{ range .Alerts }}
+          摘要: {{ .Annotations.summary }}
+          描述: {{ .Annotations.description }}
+          开始时间: {{ .StartsAt }}
+          {{ end }}
+          
+          请立即检查系统状态！
+          监控面板: http://your-domain.com:3000
+          Prometheus: http://your-domain.com:9090
+    
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#critical-alerts'
+        title: '🚨 严重告警'
+        color: 'danger'
+        text: |
+          *告警:* {{ .GroupLabels.alertname }}
+          *服务:* {{ .GroupLabels.service }}
+          *实例:* {{ .GroupLabels.instance }}
+          
+          {{ range .Alerts }}
+          *摘要:* {{ .Annotations.summary }}
+          *描述:* {{ .Annotations.description }}
+          {{ end }}
+        
+        actions:
+          - type: button
+            text: '查看监控'
+            url: 'http://your-domain.com:3000'
+          - type: button
+            text: '查看日志'
+            url: 'http://your-domain.com:9090'
+    
+    # 企业微信通知 (可选)
+    wechat_configs:
+      - corp_id: 'YOUR_CORP_ID'
+        api_secret: 'YOUR_API_SECRET'
+        to_user: '@all'
+        agent_id: 'YOUR_AGENT_ID'
+        message: |
+          严重告警通知
+          
+          告警: {{ .GroupLabels.alertname }}
+          服务: {{ .GroupLabels.service }}
+          
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ end }}
+
+  # 警告级别告警接收器
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'ops@your-domain.com'
+        subject: '[警告] 道教视频系统告警'
+        body: |
+          ⚠️ 警告告警 ⚠️
+          
+          告警名称: {{ .GroupLabels.alertname }}
+          服务: {{ .GroupLabels.service }}
+          实例: {{ .GroupLabels.instance }}
+          
+          {{ range .Alerts }}
+          摘要: {{ .Annotations.summary }}
+          描述: {{ .Annotations.description }}
+          开始时间: {{ .StartsAt }}
+          {{ end }}
+    
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#warnings'
+        title: '⚠️ 警告告警'
+        color: 'warning'
+        text: |
+          *告警:* {{ .GroupLabels.alertname }}
+          *服务:* {{ .GroupLabels.service }}
+          
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ end }}
+
+  # 数据库告警接收器
+  - name: 'database-alerts'
+    email_configs:
+      - to: 'dba@your-domain.com,ops@your-domain.com'
+        subject: '[数据库] 道教视频系统数据库告警'
+        body: |
+          🗄️ 数据库告警 🗄️
+          
+          告警名称: {{ .GroupLabels.alertname }}
+          数据库实例: {{ .GroupLabels.instance }}
+          
+          {{ range .Alerts }}
+          摘要: {{ .Annotations.summary }}
+          描述: {{ .Annotations.description }}
+          开始时间: {{ .StartsAt }}
+          {{ end }}
+          
+          建议立即检查数据库状态和性能指标。
+    
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#database-alerts'
+        title: '🗄️ 数据库告警'
+        color: '#FF9900'
+        text: |
+          *数据库告警:* {{ .GroupLabels.alertname }}
+          *实例:* {{ .GroupLabels.instance }}
+          
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ end }}
+
+  # 应用服务告警接收器
+  - name: 'application-alerts'
+    email_configs:
+      - to: 'dev@your-domain.com,ops@your-domain.com'
+        subject: '[应用] 道教视频系统应用告警'
+        body: |
+          🚀 应用告警 🚀
+          
+          告警名称: {{ .GroupLabels.alertname }}
+          应用实例: {{ .GroupLabels.instance }}
+          
+          {{ range .Alerts }}
+          摘要: {{ .Annotations.summary }}
+          描述: {{ .Annotations.description }}
+          开始时间: {{ .StartsAt }}
+          {{ end }}
+    
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#app-alerts'
+        title: '🚀 应用告警'
+        color: '#0099CC'
+        text: |
+          *应用告警:* {{ .GroupLabels.alertname }}
+          *实例:* {{ .GroupLabels.instance }}
+          
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ end }}
+
+# 告警抑制规则
+inhibit_rules:
+  # 如果服务完全不可用，抑制其他相关告警
+  - source_match:
+      alertname: 'ServiceDown'
+    target_match:
+      service: '{{ .source.service }}'
+    equal: ['service', 'instance']
+  
+  # 如果数据库不可用，抑制应用相关告警
+  - source_match:
+      alertname: 'DatabaseDown'
+    target_match:
+      alertname: 'HighErrorRate'
+    equal: ['instance']
+  
+  # 如果磁盘空间严重不足，抑制其他磁盘相关告警
+  - source_match:
+      alertname: 'DiskSpaceCritical'
+    target_match:
+      alertname: 'DiskSpaceLow'
+    equal: ['instance']
+
+# 静默规则模板
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

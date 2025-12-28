@@ -1,13 +1,18 @@
 {
   "mcpServers": {
     "sequential-thinking": {
-      "command": "uvx",
-      "args": ["mcp-sequential-thinking@latest"],
+      "command": "npx",
+      "args": [
+        "-y",
+        "@langgpt/sequential-thinking-mcp"
+      ],
       "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR"
+        "FASTMCP_LOG_LEVEL": "INFO"
       },
       "disabled": false,
-      "autoApprove": []
+      "autoApprove": [
+        "sequentialthinking"
+      ]
     }
   }
 }
