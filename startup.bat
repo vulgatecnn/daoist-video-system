@@ -32,9 +32,9 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000') do (
     taskkill /F /PID %%a >nul 2>&1
 )
 
-echo 检查并清理端口 3000 (前端)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000') do (
-    echo 清理端口 3000 的进程 %%a
+echo 检查并清理端口 7500 (前端)...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :7500') do (
+    echo 清理端口 7500 的进程 %%a
     taskkill /F /PID %%a >nul 2>&1
 )
 echo ✅ 端口清理完成
@@ -43,14 +43,14 @@ echo.
 echo [3/4] 启动后端服务...
 echo 启动 Django 开发服务器 (端口 8000)...
 cd /d "%~dp0backend"
-start "Django后端服务" cmd /k "python manage.py runserver 8000"
+start "Django后端服务" cmd /k "python manage.py runserver 0.0.0.0:8000"
 echo ✅ 后端服务启动中...
 echo.
 
 echo [4/4] 启动前端服务...
-echo 启动 React 开发服务器 (端口 3000)...
+echo 启动 React 开发服务器 (端口 7500)...
 cd /d "%~dp0frontend"
-start "React前端服务" cmd /k "npm start"
+start "React前端服务" cmd /k "set PORT=7500 && set BROWSER=none && npm start"
 echo ✅ 前端服务启动中...
 echo.
 
@@ -60,7 +60,7 @@ echo.
 echo 📋 服务信息：
 echo   后端 API：  http://localhost:8000/
 echo   管理后台：  http://localhost:8000/admin/
-echo   前端应用：  http://localhost:3000/
+echo   前端应用：  http://localhost:7500/
 echo.
 echo 💡 提示：
 echo   - 两个服务会在新的命令行窗口中运行
